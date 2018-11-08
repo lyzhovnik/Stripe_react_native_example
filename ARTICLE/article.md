@@ -41,8 +41,10 @@ This component will receive props:
 import React from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
 import { CreditCardInput } from 'react-native-credit-card-input';
+
 import { FontAwesome } from '@expo/vector-icons';
 
+// Renders credit card form and menages data from CreditCardInput component
 export default class SubscriptionCardFormView extends React.Component {
   constructor(props) {
     super(props);
@@ -63,6 +65,7 @@ export default class SubscriptionCardFormView extends React.Component {
             disabled={!this.state.cardInfo.valid || submitting}
             onPress={() => onSubmit(this.state.cardInfo)}
           />
+          {/* If there is an error then show it */}
           {error && (
             <View style={styles.alertWrapper}>
               <View style={styles.alertIconWrapper}>
@@ -115,6 +118,7 @@ const styles = StyleSheet.create({
     marginTop: 10
   }
 });
+
 ```
 
 ## Step 2. Make a fancy view for displaying our credit card form and some test about subscription for example.
@@ -129,28 +133,35 @@ import KeyboardSpacer from 'react-native-keyboard-spacer';
 
 import SubscriptionCardFormView from './SubscriptionCardFormView';
 
+// Renders view with the description of subscription and SubscriptionCardFormView
 export default class AddSubscriptionView extends React.Component {
   render() {
     return (
       <View style={styles.container}>
         <ScrollView style={styles.container} ref={ref => (this.scrollViewRef = ref)}>
           <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>Add subscription</Text>
-          </View>
-          <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>Product description</Text>
+            <Text style={styles.infoText}>
+              This is approach for implementing stripe payment service in the react native with
+              full functionality which you need for basic payment.
+            </Text>
           </View>
           <View style={styles.textWrapper}>
             <Text style={styles.infoText}>
-              Price of monthly billing is 10$
+              To get a magic private number, you need to subscribe.
+            </Text>
+          </View>
+          <View style={styles.textWrapper}>
+            <Text style={styles.infoText}>
+              Monthly subscription price: 10$
             </Text>
           </View>
           <View style={styles.cardFormWrapper}>
             <SubscriptionCardFormView {...this.props}/>
           </View>
         </ScrollView>
+        {/* scrolls to end after focusing the credit card input field */}
         <KeyboardSpacer
-          onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }), 0) }}
+          onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }),0)} }
         />
       </View>
     );
@@ -173,7 +184,6 @@ const styles = StyleSheet.create({
     margin: 10
   }
 });
-
 ```
 
 ## Step 3. Create main component (somethimes in the React flow it's called 'Container') for implementing main logic.
@@ -193,74 +203,72 @@ By the way, we also provided error handling for stripe API and our server.
 
 ```javascript
 import React from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
 
 import AddSubscriptionView from '../components/AddSubscriptionView';
 
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_ww70oUQ411111O4AnvglxCp';
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_ww70oUQ44vVJ3HO4AnvglxCp';
 
 const STRIPE_ERROR = 'Payment service error. Try again later.';
-const CREDIT_CARD_ERROR = 'The credit card data are invalid. Please enter valid data.';
 const SERVER_ERROR = 'Server error. Try again later.';
 
 export default class AddSubscription extends React.Component {
   static navigationOptions = {
     title: 'Add subscription',
   };
-  state = {
-    card: {}
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      submitting: false,
+      error: null
+    }
   }
 
+
+  // Handles submit the button in the credit card form
   onSubmit = async (creditCardInput) => {
     const { navigation } = this.props;
+    // disable button while creating the credit card token
     this.setState({ submitting: true });
     let creditCardToken;
 
-
-    // create credit card token
     try {
+      // create credit card token
       creditCardToken = await createCreditCardToken(creditCardInput);
       if (creditCardToken.error) {
-        this.setState({ submitting: false, error: STRIPE_ERROR });
+        // if stripe has an error, then show stripe payment service error
+        this.setState({ submitting: false, error: creditCardToken.error.message });
         return;
       }
     } catch (e) {
-      this.setState({ submitting: false, error: CREDIT_CARD_ERROR });
+      // if there is an error with the request, thats mean error with the credit card
+      this.setState({ submitting: false, error: STRIPE_ERROR });
       return;
     }
 
     // Send request to the server with the credit card token
-    try {
-      const { errors } = await addSubscription(creditCardToken);
-
-      if (!errors) {
-        this.setState({ submitting: false });
-        navigation.navigate('Home');
-      } else {
-        this.setState({ submitting: false, error: SERVER_ERROR });
-      }
-
-    } catch (e) {
+    const { errors } = await addSubscription(creditCardToken);
+    // if server responses without errors then make your custom actions
+    // for example redirect to another screen
+    if (errors) {
       this.setState({ submitting: false, error: SERVER_ERROR });
+    } else {
+      this.setState({ submitting: false, error: null });
+      navigation.navigate('Home')
     }
   };
 
   render() {
+    const { submitting, error } = this.state;
     return (
-      <ScrollView style={styles.container}>
-        <AddSubscriptionView onSubmit={this.onSubmit} card={this.state.card}/>
-      </ScrollView>
+        <AddSubscriptionView
+          error={error}
+          submitting={submitting}
+          onSubmit={this.onSubmit}
+        />
     );
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 15,
-    backgroundColor: '#fff',
-  },
-});
 ```
 
 ## Step 4. Create function for manually sending request to the Stripe API.
@@ -283,7 +291,9 @@ curl https://api.stripe.com/v1/tokens \
 but how to make a request via React Native Fetch? Here is solution:
 
 ```javascript
+// Sends the request to the Stripe api for creating credit card token.
 const createCreditCardToken = (creditCardInput) => {
+  // gets together all credit card data
   const card = {
     'card[number]': creditCardInput.values.number.replace(/ /g, ''),
     'card[exp_month]': creditCardInput.values.expiry.split('/')[0],
@@ -298,6 +308,7 @@ const createCreditCardToken = (creditCardInput) => {
       Authorization: `Bearer ${STRIPE_PUBLISHABLE_KEY}`
     },
     method: 'post',
+    // formats body to x-www-form-urlencoded format
     body: Object.keys(card)
       .map(key => key + '=' + card[key])
       .join('&')

@@ -4,6 +4,7 @@ import { CreditCardInput } from 'react-native-credit-card-input';
 
 import { FontAwesome } from '@expo/vector-icons';
 
+// Renders credit card form and menages data from CreditCardInput component
 export default class SubscriptionCardFormView extends React.Component {
   constructor(props) {
     super(props);
@@ -24,6 +25,7 @@ export default class SubscriptionCardFormView extends React.Component {
             disabled={!this.state.cardInfo.valid || submitting}
             onPress={() => onSubmit(this.state.cardInfo)}
           />
+          {/* If there is an error then show it */}
           {error && (
             <View style={styles.alertWrapper}>
               <View style={styles.alertIconWrapper}>

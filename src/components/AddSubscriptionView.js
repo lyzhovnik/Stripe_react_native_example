@@ -4,28 +4,35 @@ import KeyboardSpacer from 'react-native-keyboard-spacer';
 
 import SubscriptionCardFormView from './SubscriptionCardFormView';
 
+// Renders view with the description of subscription and SubscriptionCardFormView
 export default class AddSubscriptionView extends React.Component {
   render() {
     return (
       <View style={styles.container}>
         <ScrollView style={styles.container} ref={ref => (this.scrollViewRef = ref)}>
           <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>Add subscription</Text>
-          </View>
-          <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>Product description</Text>
+            <Text style={styles.infoText}>
+              This is approach for implementing stripe payment service in the react native with
+              full functionality which you need for basic payment.
+            </Text>
           </View>
           <View style={styles.textWrapper}>
             <Text style={styles.infoText}>
-              Price of monthly billing is 10$
+              To get a magic private number, you need to subscribe.
+            </Text>
+          </View>
+          <View style={styles.textWrapper}>
+            <Text style={styles.infoText}>
+              Monthly subscription price: 10$
             </Text>
           </View>
           <View style={styles.cardFormWrapper}>
             <SubscriptionCardFormView {...this.props}/>
           </View>
         </ScrollView>
+        {/* scrolls to end after focusing the credit card input field */}
         <KeyboardSpacer
-          onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }), 0) }}
+          onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }),0)} }
         />
       </View>
     );
