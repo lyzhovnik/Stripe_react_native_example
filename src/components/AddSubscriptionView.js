@@ -2,9 +2,11 @@ import React from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import KeyboardSpacer from 'react-native-keyboard-spacer';
 
-import SubscriptionCardFormView from './SubscriptionCardFormView';
+import PaymentFormView from './PaymentFormView';
 
-// Renders view with the description of subscription and SubscriptionCardFormView
+/**
+ * The class renders a view with SubscriptionCardFormView
+ */
 export default class AddSubscriptionView extends React.Component {
   render() {
     return (
@@ -12,25 +14,25 @@ export default class AddSubscriptionView extends React.Component {
         <ScrollView style={styles.container} ref={ref => (this.scrollViewRef = ref)}>
           <View style={styles.textWrapper}>
             <Text style={styles.infoText}>
-              This is approach for implementing stripe payment service in the react native with
-              full functionality which you need for basic payment.
+              Try out full-featured Stripe payment functionality
+              in a React Native app
             </Text>
           </View>
           <View style={styles.textWrapper}>
             <Text style={styles.infoText}>
-              To get a magic private number, you need to subscribe.
+              Subscribe to see the magic number!
             </Text>
           </View>
           <View style={styles.textWrapper}>
             <Text style={styles.infoText}>
-              Monthly subscription price: 10$
+              Subscription Plan: $10/month
             </Text>
           </View>
           <View style={styles.cardFormWrapper}>
-            <SubscriptionCardFormView {...this.props}/>
+            <PaymentFormView {...this.props}/>
           </View>
         </ScrollView>
-        {/* scrolls to end after focusing the credit card input field */}
+        {/* Scrolls to the end after focusing the credit card input field */}
         <KeyboardSpacer
           onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }),0)} }
         />
