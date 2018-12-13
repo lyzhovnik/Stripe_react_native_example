@@ -1,31 +1,33 @@
 import React from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
 import { CreditCardInput } from 'react-native-credit-card-input';
-
 import { FontAwesome } from '@expo/vector-icons';
 
-// Renders credit card form and menages data from CreditCardInput component
-export default class SubscriptionCardFormView extends React.Component {
+/**
+ * Renders the payment form and handles the credit card data
+ * using the CreditCardInput component.
+ */
+export default class PaymentFormView extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { cardInfo: { valid: false } };
+    this.state = { cardData: { valid: false } };
   }
 
   render() {
-    const { onSubmit, submitting, error } = this.props;
+    const { onSubmit, submitted, error } = this.props;
 
     return (
       <View>
         <View>
-          <CreditCardInput requiresName onChange={(cardInfo) => this.setState({ cardInfo })} />
+          <CreditCardInput requiresName onChange={(cardData) => this.setState({ cardData })} />
         </View>
         <View style={styles.buttonWrapper}>
           <Button
-            title='Add subscription'
-            disabled={!this.state.cardInfo.valid || submitting}
-            onPress={() => onSubmit(this.state.cardInfo)}
+            title='Subscribe'
+            disabled={!this.state.cardData.valid || submitted}
+            onPress={() => onSubmit(this.state.cardData)}
           />
-          {/* If there is an error then show it */}
+          {/* Show errors */}
           {error && (
             <View style={styles.alertWrapper}>
               <View style={styles.alertIconWrapper}>

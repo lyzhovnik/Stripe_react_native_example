@@ -29,7 +29,7 @@ const AddSubscriptionStack = createStackNavigator({
 });
 
 AddSubscriptionStack.navigationOptions = {
-  tabBarLabel: 'Add subscription',
+  tabBarLabel: 'Subscribe',
   tabBarIcon: ({ focused }) => (
     <TabBarIcon
       focused={focused}
