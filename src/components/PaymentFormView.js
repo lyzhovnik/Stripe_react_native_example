@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
 import { CreditCardInput } from 'react-native-credit-card-input';
-
 import { FontAwesome } from '@expo/vector-icons';
 
 /**
@@ -11,7 +10,7 @@ import { FontAwesome } from '@expo/vector-icons';
 export default class PaymentFormView extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { cardInfo: { valid: false } };
+    this.state = { cardData: { valid: false } };
   }
 
   render() {
@@ -20,13 +19,13 @@ export default class PaymentFormView extends React.Component {
     return (
       <View>
         <View>
-          <CreditCardInput requiresName onChange={(cardInfo) => this.setState({ cardInfo })} />
+          <CreditCardInput requiresName onChange={(cardData) => this.setState({ cardData })} />
         </View>
         <View style={styles.buttonWrapper}>
           <Button
             title='Subscribe'
-            disabled={!this.state.cardInfo.valid || submitted}
-            onPress={() => onSubmit(this.state.cardInfo)}
+            disabled={!this.state.cardData.valid || submitted}
+            onPress={() => onSubmit(this.state.cardData)}
           />
           {/* Show errors */}
           {error && (

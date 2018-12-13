@@ -1,108 +1,192 @@
-# How to Integrate Stripe into a React Native Mobile App
+When you’re building a React Native app using Expo and are going to integrate it with Stripe, you can get pain in the 
+neck. For example, you can't use Stripe Elements to rapidly add an appealing payment interface to your app. Second, you 
+also can't use the Stripe API with convenient methods to send your requests to Stripe.
 
-When you’re building a React Native app using Expo and are integrating your app with Stripe, a boilerplate to start with 
-can be of good help. In this article, I provide a solution for how to implement a payment service with Stripe in a React 
-Native app with full functionality. We’ve used this approach on Apollo Universal Starter Kit.
+Well, in practice you _can_ do all of that. But if you're going to use libraries that must be added to React Native 
+bundle with `react-native link`, then you first need to detach Expo and handle [a few issues].
 
-We’re going to solve the following tasks:
+Thankfully, you don't have to run `expo eject` (to detach the Expo project) to use Stripe in your React Native project. 
+I'm going to describe a very simple approach for integrating Stripe into your React Native app running with Expo (I've
+used a similar approach in [Apollo Universal Starter Kit], the project I'm working on).
+ 
+Here's what we'll do:
 
-* Implementing a fancy design for entering the credit card data
-* Validating the credit card data with `react-native-credit-card-input`
-* Making a manual request to the Stripe API
+* Implementing a fancy, custom UI design
+* Validating the credit card data
+* Sending requests to Stripe manually
 
-For those who want to see the code in action, check out [this repository]. The approach that I'm going to describe is 
-also shown in the payment module of Apollo Universal Starter Kit. 
+After completing the tasks, we get the following result:
 
-Let’s start with the first task. We’ll focus only on the implementation.
+<img src="" alt="Expo and React Native app with custom Stripe integration" />
 
-Install a few libraries:
+If you want to see the code already, have a look at [this repository] or [the starter kit implementation] of the payment 
+module. If otherwise, continue to the sections below.
 
-* `react-native-credit-card-input`
-* `react-native-keyboard-spacer`
+## Generating a React Native project
 
-I’ll build several components: a smart component and two dumb components. In the last section, I’ll provide a solution 
-to talk to the Stripe API without Stripe.js (the solution is obvious and simple, but still).
+You can use Expo CLI to generate a sample React Native project. [Install the CLI] if necessary and run the following
+command:
 
-## Creating a smart component
+```bash
+expo init
+```
 
-Here we will create a smart component for adding subscription functionality. This component will render our view and 
-also will have a method for submitting the form.
+You'll need to answer a few questions and then you'll have a project up and running. From now on, I'll focus only on
+the implementation of the components that use Stripe payments.
 
-About the submit method in details  this method will be passed into our form `'SubscriptionCardFormView'` where we will 
-call this method and pass a credit card via props.
+## Installing the libraries
 
-This method will:
+Before you actually write the code, install a few libraries:
 
-* create a credit card token (by the way, we create a credit card token by stripe and also stripe will send back some 
-credit card information which we can safety use in our application);
-* send created token and credit card into (**Important**  - which was sent back with token) to the server, and depending 
-on the answer, already to be guided what to do next - show errors or for example redirect to next page.
+* `react-native-credit-card-input` for payment data verification
+* `react-native-keyboard-spacer` for a few animations
 
-By the way, we also provided error handling for stripe API and our server.
+As usual, you can use Yarn or NPM to install these libraries in your project:
+
+```bash
+# With Yarn
+yarn add react-native-credit-card-input react-native-keyboard-spacer --save-dev
+# or use NPM
+npm install react-native-credit-card-input react-native-keyboard-spacer --save-dev
+```
+
+Once you install them, move on to the next step &mdash; creating the components.
+
+## Creating the React Native components with Stripe
+
+The sample application will have just three components: one component to rule them all, the smart `AddSubscription` 
+component, and two dumb components &mdash; `AddSubscriptionView` and `PaymentFormView` &mdash; that render the payment 
+form.
+
+First, let's create the `AddSubscription` component.
+
+### Smart component to handle Stripe in React Native app
+
+The smart component `AddSubscription` is responsible for subscribing the user and it does the following tasks:
+
+* It renders the `AddSubscriptionView` (dumb) component (which we have a look at in 
+<a href="#react-native-root-form-view-for-stripe">a later section</a>)
+* It contains a function for submitting the payment form. This function will be passed into the
+<a href="#payment-form-view">payment form view</a>
+* It passes the application state and the submit method to the form view
+
+Here's the `AddSubscription` implementation, which you can put in `root/src/screens/` directory:
 
 ```javascript
 import React from 'react';
-
 import AddSubscriptionView from '../components/AddSubscriptionView';
 
 const STRIPE_PUBLISHABLE_KEY = 'pk_test_ww70oUQ44vVJ3HO4AnvglxCp';
 
-const STRIPE_ERROR = 'Stripe couln\'t charge your card. Try again later or use different credit card.';
-const SERVER_ERROR = 'Server error. Try again later.';
+/**
+ * The method sends HTTP requests to the Stripe API.
+ * It's necessary to manually send the payment data
+ * to Stripe because using Stripe Elements in React 
+ * Native apps isn't possible.
+ *
+ * @param creditCardData the credit card data
+ * @return Promise with the Stripe data
+ */
+const getCreditCardToken = (creditCardData) => {
+  const card = {
+    'card[number]': creditCardData.values.number.replace(/ /g, ''),
+    'card[exp_month]': creditCardData.values.expiry.split('/')[0],
+    'card[exp_year]': creditCardData.values.expiry.split('/')[1],
+    'card[cvc]': creditCardData.values.cvc
+  };
 
+  return fetch('https://api.stripe.com/v1/tokens', {
+    headers: {
+      // Use the correct MIME type for your server
+      Accept: 'application/json',
+      // Use the correct Content Type to send data in request body
+      'Content-Type': 'application/x-www-form-urlencoded',
+      // Use the Stripe publishable key as Bearer
+      Authorization: `Bearer ${STRIPE_PUBLISHABLE_KEY}`
+    },
+    // Use a proper HTTP method
+    method: 'post',
+    // Format the credit card data to a string of key-value pairs
+    // divided by &
+    body: Object.keys(card)
+      .map(key => key + '=' + card[key])
+      .join('&')
+  }).then(response => response.json());
+};
+
+/**
+ * The method imitates a request to our server.
+ *
+ * @param creditCardToken
+ * @return {Promise<Response>}
+ */
+const subscribeUser = (creditCardToken) => {
+  return new Promise((resolve) => {
+    console.log('Credit card token\n', creditCardToken);
+    setTimeout(() => {
+      resolve({ status: true });
+    }, 1000)
+  });
+};
+
+/**
+ * The main class that submits the credit card data and
+ * handles the response from Stripe.
+ */
 export default class AddSubscription extends React.Component {
   static navigationOptions = {
-    title: 'Add subscription',
+    title: 'Subscription page',
   };
 
   constructor(props) {
     super(props);
     this.state = {
-      submitting: false,
+      submitted: false,
       error: null
     }
   }
 
-
-  // Handles submit the button in the credit card form
+  // Handles submitting the payment request
   onSubmit = async (creditCardInput) => {
     const { navigation } = this.props;
-    // disable button while creating the credit card token
-    this.setState({ submitting: true });
+    // Disable the Submit button after the request is sent
+    this.setState({ submitted: true });
     let creditCardToken;
 
     try {
-      // create credit card token
-      creditCardToken = await createCreditCardToken(creditCardInput);
+      // Create a credit card token
+      creditCardToken = await getCreditCardToken(creditCardInput);
       if (creditCardToken.error) {
-        // if stripe has an error, then show stripe payment service error
-        this.setState({ submitting: false, error: creditCardToken.error.message });
+        // Reset the state if Stripe responds with an error
+        // Set submitted to false to let the user subscribe again
+        this.setState({ submitted: false, error: creditCardToken.error.message });
         return;
       }
     } catch (e) {
-      // if there is an error with the request, thats mean error with the credit card
-      this.setState({ submitting: false, error: STRIPE_ERROR });
+      // Reset the state if the request was sent with an error
+      // Set submitted to false to let the user subscribe again
+      this.setState({ submitted: false, error: `Error: ${e.message}` });
       return;
     }
 
-    // Send request to the server with the credit card token
-    const { errors } = await addSubscription(creditCardToken);
-    // if server responses without errors then make your custom actions
-    // for example redirect to another screen
-    if (errors) {
-      this.setState({ submitting: false, error: SERVER_ERROR });
+    // Send a request to your server with the received credit card token
+    const { error } = await subscribeUser(creditCardToken);
+    // Handle any errors from your server
+    if (error) {
+      this.setState({ submitted: false, error: `Error: ${error.message}` });
     } else {
-      this.setState({ submitting: false, error: null });
+      this.setState({ submitted: false, error: null });
       navigation.navigate('Home')
     }
   };
-
+  
+  // render the subscription view component and pass the props to it
   render() {
-    const { submitting, error } = this.state;
+    const { submitted, error } = this.state;
     return (
         <AddSubscriptionView
           error={error}
-          submitting={submitting}
+          submitted={submitted}
           onSubmit={this.onSubmit}
         />
     );
@@ -110,46 +194,161 @@ export default class AddSubscription extends React.Component {
 }
 ```
 
-## Creating a dumb component to the manage credit card state
+As you can see, there's nothing special going on in the code snippet above. The key part in the code snippet, though, is 
+the function `createCreditCardToken()`:
 
-We’re going to create the component `'SubscriptionCardFormView'` to build the payment form. This component will be 
-managing the state of the credit card, validate the card, show errors if something goes wrong after the request to 
-Stripe or our server was sent, and disable the submit button after a request when we send request.
+```javascript
+const createCreditCardToken = (creditCardData) => {
+  const card = {
+      'card[number]': creditCardData.values.number.replace(/ /g, ''),
+      'card[exp_month]': creditCardData.values.expiry.split('/')[0],
+      'card[exp_year]': creditCardData.values.expiry.split('/')[1],
+      'card[cvc]': creditCardData.values.cvc
+  };
 
-This component will also receive the following props to handle all aspects of processing the credit card:
-- onSubmit, a handler that will submit the form
-- submitted, a variable that will store a boolean value to disable the submit button after we sent a request
-- error,an error message to show when something went wrong with the response from our server or Stripe
-So here’s the implementation:
+  return fetch('https://api.stripe.com/v1/tokens', {
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Bearer ${STRIPE_PUBLISHABLE_KEY}`
+    },
+    method: 'post',
+    body: Object.keys(card)
+      .map(key => key + '=' + card[key])
+      .join('&')
+  }).then(response => response.json());
+};
+```
+
+This function sends a typical POST request using the Fetch API. What's important is that you should send 
+the credit card data as a string: Stripe will yell at you with the demand to use the `application/x-www-form-urlencoded` 
+if you try to send data in the JSON format:
+
+<img src="" alt="Error when sending payment data in JSON to Stripe" />
+
+This is why you need to use the specific content type and encode the payment data in the string using `'&'` as a 
+delimiter.
+
+Let's now create `AddSubscriptionView`.
+
+### Creating the root form view
+
+`AddSubscriptionView` is a simple view component with the layout for the entire payment component. I put the file 
+`AddSubscriptionView.js` into the `root/src/components` folder.
+
+Take a look at the implementation:
+
+```javascript
+import React from 'react';
+import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import KeyboardSpacer from 'react-native-keyboard-spacer';
+import PaymentFormView from './PaymentFormView';
+
+/**
+ * The class renders a view with PaymentFormView
+ */
+export default class AddSubscriptionView extends React.Component {
+  render() {
+    return (
+      <View style={styles.container}>
+        <ScrollView style={styles.container} ref={ref => (this.scrollViewRef = ref)}>
+          <View style={styles.textWrapper}>
+            <Text style={styles.infoText}>
+              Try out full Stripe payment functionality in a React Native app
+            </Text>
+          </View>
+          <View style={styles.textWrapper}>
+            <Text style={styles.infoText}>
+              Subscribe to see the magic number!
+            </Text>
+          </View>
+          <View style={styles.textWrapper}>
+            <Text style={styles.infoText}>
+              Subscription Plan: $10/month
+            </Text>
+          </View>
+          <View style={styles.cardFormWrapper}>
+            <PaymentFormView {...this.props}/>
+          </View>
+        </ScrollView>
+        {/* Scrolls to the payment form */}
+        <KeyboardSpacer
+          onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }),0)} }
+        />
+      </View>
+    );
+  }
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1
+  },
+  textWrapper: {
+    margin: 10
+  },
+  infoText: {
+    fontSize: 18,
+    textAlign: 'center'
+  },
+  cardFormWrapper: {
+    padding: 10,
+    margin: 10
+  }
+});
+```
+
+Notice that the payment form &mdash; `PaymentFormView` &mdash; is actually a separate component `PaymentFormView` that 
+I'll show last.
+
+### Creating the payment form component
+
+The `PaymentFormView` component provides the layout and styles for the payment form. This component will be managing the 
+state of the credit card, validating the card, and displaying errors if something goes wrong after the request was sent. 
+
+Note that the Submit button will be disabled once you send a request to make sure that the user doesn't try to pay 
+several times.
+ 
+`PaymentFormView` receives the following props from the smart component `AddSubscription` to handle all aspects of 
+processing the credit card:
+
+* `onSubmit`, a handler that submits the payment data
+* `submitted`, a boolean value to toggle the state for the Submit button
+* `error`, an error message to show when something goes wrong
+
+Here’s the implementation:
+
 ```javascript
 import React from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
 import { CreditCardInput } from 'react-native-credit-card-input';
-
 import { FontAwesome } from '@expo/vector-icons';
 
-// Renders the payment form and manages data from CreditCardInput component
-export default class SubscriptionCardFormView extends React.Component {
+/**
+ * Renders the payment form and handles the credit card data
+ * using the CreditCardInput component.
+ */
+export default class PaymentFormView extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { cardInfo: { valid: false } };
+    this.state = { cardData: { valid: false } };
   }
 
   render() {
-    const { onSubmit, submitting, error } = this.props;
+    const { onSubmit, submitted, error } = this.props;
 
     return (
       <View>
         <View>
-          <CreditCardInput requiresName onChange={(cardInfo) => this.setState({ cardInfo })} />
+          <CreditCardInput requiresName onChange={(cardData) => this.setState({ cardData })} />
         </View>
         <View style={styles.buttonWrapper}>
           <Button
-            title='Add subscription'
-            disabled={!this.state.cardInfo.valid || submitting}
-            onPress={() => onSubmit(this.state.cardInfo)}
+            title='Subscribe'
+            disabled={!this.state.cardData.valid || submitted}
+            onPress={() => onSubmit(this.state.cardData)}
           />
-          {/* If there is an error then show it */}
+          {/* Show errors */}
           {error && (
             <View style={styles.alertWrapper}>
               <View style={styles.alertIconWrapper}>
@@ -203,111 +402,12 @@ const styles = StyleSheet.create({
   }
 });
 ```
-## Step 3. Create a payment form.
-Then we will create a component 'AddSubscriptionView'. The component below will create a view which will display the form.
-```javascript
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
-import KeyboardSpacer from 'react-native-keyboard-spacer';
 
-import SubscriptionCardFormView from './SubscriptionCardFormView';
+Now you run the app and test a nice-looking Stripe-based payment form in your React Native app!
 
-// Renders the view with the description of subscription and SubscriptionCardFormView
-export default class AddSubscriptionView extends React.Component {
-  render() {
-    return (
-      <View style={styles.container}>
-        <ScrollView style={styles.container} ref={ref => (this.scrollViewRef = ref)}>
-          <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>
-              This is approach for implementing stripe payment service in the react native with
-              full functionality which you need for basic payment.
-            </Text>
-          </View>
-          <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>
-              To get a magic private number, you need to subscribe.
-            </Text>
-          </View>
-          <View style={styles.textWrapper}>
-            <Text style={styles.infoText}>
-              Monthly subscription price: 10$
-            </Text>
-          </View>
-          <View style={styles.cardFormWrapper}>
-            <SubscriptionCardFormView {...this.props}/>
-          </View>
-        </ScrollView>
-        {/* scrolls to end after focusing the credit card input field */}
-        <KeyboardSpacer
-          onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }),0)} }
-        />
-      </View>
-    );
-  }
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
-  textWrapper: {
-    margin: 10
-  },
-  infoText: {
-    fontSize: 18,
-    textAlign: 'center'
-  },
-  cardFormWrapper: {
-    padding: 10,
-    margin: 10
-  }
-});
-```
-## Step 4. Creating a handler to manually send requests to the Stripe API
-We won’t use any addition libraries to work with Stripe because of Expo. We can’t use Stripe.js (like we would do in a React application) because we’d have to run `expo eject`, and then manage three projects – Android, iOS, and a common React Native project. But if we can’t use a prepared library, how can we send an HTTP request to Stripe? That’s quite simple, and you might have already figured it out. Nope, we aren’t going to use XMLHttpRequest (it’s not 2007 any more), we’ll use the Fetch API.
-To send a request manually, we’ll need to cover four aspects:
-Use the correct request string, which is `'https://api.stripe.com/v1/tokens'`
-Use the correct HTTP method, POST in this case
-Use the correct headers
-Transform the payment data into a string to send them in the request body
-As you can see, this is a very obvious solution. Let’s have a look at the code that implements it:
-```javascript
-// Sends the request to the Stripe api for creating credit card token.
-const createCreditCardToken = (creditCardInput) => {
-  // gets together all credit card data
-  const card = {
-    'card[number]': creditCardInput.values.number.replace(/ /g, ''),
-    'card[exp_month]': creditCardInput.values.expiry.split('/')[0],
-    'card[exp_year]': creditCardInput.values.expiry.split('/')[1],
-    'card[cvc]': creditCardInput.values.cvc
-  };
-
-  return fetch('https://api.stripe.com/v1/tokens', {
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': ' application/x-www-form-urlencoded',
-      Authorization: `Bearer ${STRIPE_PUBLISHABLE_KEY}`
-    },
-    method: 'post',
-    // formats body to x-www-form-urlencoded format
-    body: Object.keys(card)
-      .map(key => key + '=' + card[key])
-      .join('&')
-  }).then(response => response.json());
-};
-```
-Then we will extract the token and credit card data and can use it on our server in our needs. (Don't use entered credit 
-card from user! It's not safe.)
-
-## Conclusions
-
-In this short tutorial, we’ve created a nice-looking React Native app where we can take a credit card from user with 
-fancy design, also with credit card validation. Also with connection to Stripe Api without additions libraries and error 
-handlers.
-
-(For those who to actually test this solution, you’re welcome to the 
-[Expo app](https://expo.io/@sysgears/apollo-universal-starter-kit)). So, yeah, sometimes the simplest idea is to use 
-simple solutions (like XMLHttpRequest) and not a library.
-
+[a few issues]: #https://docs.expo.io/versions/v24.0.0/expokit/detach#you-should-not-detach-if
+[apollo universal starter kit]: https://apollokit.org
 [this repository]: https://github.com/lyzhovnik/Stripe_react_native_example
+[the starter kit implementation]: https://github.com/sysgears/apollo-universal-starter-kit/tree/master/packages/client/src/modules/payments
+[install the cli]: https://docs.expo.io/versions/latest/introduction/installation
+[expo app]: https://expo.io/@sysgears/apollo-universal-starter-kit

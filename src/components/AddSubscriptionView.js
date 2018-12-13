@@ -5,7 +5,7 @@ import KeyboardSpacer from 'react-native-keyboard-spacer';
 import PaymentFormView from './PaymentFormView';
 
 /**
- * The class renders a view with SubscriptionCardFormView
+ * The class renders a view with PaymentFormView
  */
 export default class AddSubscriptionView extends React.Component {
   render() {
@@ -14,8 +14,7 @@ export default class AddSubscriptionView extends React.Component {
         <ScrollView style={styles.container} ref={ref => (this.scrollViewRef = ref)}>
           <View style={styles.textWrapper}>
             <Text style={styles.infoText}>
-              Try out full-featured Stripe payment functionality
-              in a React Native app
+              Try out full Stripe payment functionality in a React Native app
             </Text>
           </View>
           <View style={styles.textWrapper}>
@@ -32,7 +31,7 @@ export default class AddSubscriptionView extends React.Component {
             <PaymentFormView {...this.props}/>
           </View>
         </ScrollView>
-        {/* Scrolls to the end after focusing the credit card input field */}
+        {/* Scrolls to the payment form */}
         <KeyboardSpacer
           onToggle={() => { setTimeout(() => this.scrollViewRef.scrollToEnd({ animated: true }),0)} }
         />

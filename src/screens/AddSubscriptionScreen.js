@@ -4,15 +4,15 @@ import AddSubscriptionView from '../components/AddSubscriptionView';
 const STRIPE_PUBLISHABLE_KEY = 'pk_test_ww70oUQ44vVJ3HO4AnvglxCp';
 
 /**
- * The method sends an HTTP requests to the Stripe API.
- * This method is necessary to manually send the payment data
+ * The method sends HTTP requests to the Stripe API.
+ * It's necessary to manually send the payment data
  * to Stripe because using Stripe Elements in React Native apps
  * isn't possible.
  *
  * @param creditCardData the credit card data
  * @return Promise with the Stripe data
  */
-const createCreditCardToken = (creditCardData) => {
+const getCreditCardToken = (creditCardData) => {
   const card = {
     'card[number]': creditCardData.values.number.replace(/ /g, ''),
     'card[exp_month]': creditCardData.values.expiry.split('/')[0],
@@ -22,9 +22,9 @@ const createCreditCardToken = (creditCardData) => {
 
   return fetch('https://api.stripe.com/v1/tokens', {
     headers: {
-      // Use the correct MIME type for your server.
+      // Use the correct MIME type for your server
       Accept: 'application/json',
-      // Use a specific Content Type to send data in request body
+      // Use the correct Content Type to send data in request body
       'Content-Type': 'application/x-www-form-urlencoded',
       // Use the Stripe publishable key as Bearer
       Authorization: `Bearer ${STRIPE_PUBLISHABLE_KEY}`
@@ -47,7 +47,7 @@ const createCreditCardToken = (creditCardData) => {
  */
 const subscribeUser = (creditCardToken) => {
   return new Promise((resolve) => {
-    console.log(`Credit card token: ${creditCardToken}`);
+    console.log('Credit card token\n', creditCardToken);
     setTimeout(() => {
       resolve({ status: true });
     }, 1000)
@@ -60,7 +60,7 @@ const subscribeUser = (creditCardToken) => {
  */
 export default class AddSubscription extends React.Component {
   static navigationOptions = {
-    title: 'Add subscription',
+    title: 'Subscription page',
   };
 
   constructor(props) {
@@ -71,8 +71,7 @@ export default class AddSubscription extends React.Component {
     }
   }
 
-
-  // Handles the tap on the Submit button
+  // Handles submitting the payment request
   onSubmit = async (creditCardInput) => {
     const { navigation } = this.props;
     // Disable the Submit button after the request is sent
@@ -80,24 +79,24 @@ export default class AddSubscription extends React.Component {
     let creditCardToken;
 
     try {
-      // Create the credit card token
-      creditCardToken = await createCreditCardToken(creditCardInput);
+      // Create a credit card token
+      creditCardToken = await getCreditCardToken(creditCardInput);
       if (creditCardToken.error) {
         // Reset the state if Stripe responds with an error
-        // Remember to set submitted to false to let the user try to subscribe again
+        // Set submitted to false to let the user subscribe again
         this.setState({ submitted: false, error: creditCardToken.error.message });
         return;
       }
     } catch (e) {
-      // Reset the state if the request has nan error typically because of the credit card
-      // Remember to set submitted to false to let the user try to subscribe again
+      // Reset the state if the request was sent with an error
+      // Set submitted to false to let the user subscribe again
       this.setState({ submitted: false, error: `Error: ${e.message}` });
       return;
     }
 
     // Send a request to your server with the received credit card token
     const { error } = await subscribeUser(creditCardToken);
-    // Add your own logic if the server responses without errors
+    // Handle any errors from your server
     if (error) {
       this.setState({ submitted: false, error: `Error: ${error.message}` });
     } else {
