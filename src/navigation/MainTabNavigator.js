@@ -29,7 +29,7 @@ const AddSubscriptionStack = createStackNavigator({
 });
 
 AddSubscriptionStack.navigationOptions = {
-  tabBarLabel: 'Add subscription',
+  tabBarLabel: 'Subscribe',
   tabBarIcon: ({ focused }) => (
     <TabBarIcon
       focused={focused}
@@ -39,6 +39,6 @@ AddSubscriptionStack.navigationOptions = {
 };
 
 export default createBottomTabNavigator({
-  HomeStack,
-  AddSubscriptionStack,
+  AddSubscription: { screen: AddSubscriptionStack, navigationOptions:{tabBarVisible: false} },
+  HomeStack
 });

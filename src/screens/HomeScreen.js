@@ -22,42 +22,15 @@ export default class HomeScreen extends React.Component {
           <View style={styles.welcomeContainer}>
             <Image
               source={
-                __DEV__
-                  ? require('../assets/images/robot-dev.png')
-                  : require('../assets/images/robot-prod.png')
+                __DEV__ ? require('../assets/images/robot-dev.png') : require('../assets/images/robot-prod.png')
               }
               style={styles.welcomeImage}
             />
           </View>
-
           <View style={styles.getStartedContainer}>
-            {this._maybeRenderDevelopmentModeWarning()}
-
-            <Text style={styles.getStartedText}>Get started by opening</Text>
-
-            <View style={[styles.codeHighlightContainer, styles.homeScreenFilename]}>
-              <Text style={styles.codeHighlightText}>screens/HomeScreen.js</Text>
-            </View>
-
-            <Text style={styles.getStartedText}>
-              Change this text and your app will automatically reload.
-            </Text>
-          </View>
-
-          <View style={styles.helpContainer}>
-            <TouchableOpacity onPress={this._handleHelpPress} style={styles.helpLink}>
-              <Text style={styles.helpLinkText}>Help, it didn’t automatically reload!</Text>
-            </TouchableOpacity>
+            <Text style={styles.getStartedText}>YOU HAVE BEEN SUBSCRIBED!</Text>
           </View>
         </ScrollView>
-
-        <View style={styles.tabBarInfoContainer}>
-          <Text style={styles.tabBarInfoText}>This is a tab bar. You can edit it in:</Text>
-
-          <View style={[styles.codeHighlightContainer, styles.navigationFilename]}>
-            <Text style={styles.codeHighlightText}>navigation/MainTabNavigator.js</Text>
-          </View>
-        </View>
       </View>
     );
   }
